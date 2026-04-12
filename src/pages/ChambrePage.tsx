@@ -1,0 +1,182 @@
+import { useEffect, useState } from 'react'
+import type { ChambreDto, TypeChambre } from '../types/entities'
+import { createChambre, deleteChambre, getChambres, updateChambre } from '../services/api'
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+} from '@mui/material'
+import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/Delete'
+import AddIcon from '@mui/icons-material/Add'
+
+const initialChambre: ChambreDto = {
+  numeroChambre: 0,
+  type: 'SIMPLE',
+}
+
+const chambreTypes: TypeChambre[] = ['SIMPLE', 'DOUBLE', 'TRIPLE']
+
+export default function ChambrePage() {
+  const [chambres, setChambres] = useState<ChambreDto[]>([])
+  const [form, setForm] = useState<ChambreDto>(initialChambre)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [open, setOpen] = useState(false)
+
+  const loadChambres = async () => {
+    try {
+      const data = await getChambres()
+      setChambres(data)
+    } catch (error) {
+      console.error('Unable to load chambres')
+    }
+  }
+
+  useEffect(() => {
+    loadChambres()
+  }, [])
+
+  const handleOpen = () => setOpen(true)
+  const handleClose = () => {
+    setOpen(false)
+    setForm(initialChambre)
+    setSelectedId(null)
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    try {
+      if (selectedId) {
+        await updateChambre({ ...form, id: selectedId })
+      } else {
+        await createChambre(form)
+      }
+      await loadChambres()
+      handleClose()
+    } catch (error) {
+      console.error('Save failed')
+    }
+  }
+
+  const handleDelete = async (id?: number) => {
+    if (!id) return
+    try {
+      await deleteChambre(id)
+      await loadChambres()
+    } catch (error) {
+      console.error('Delete failed')
+    }
+  }
+
+  const handleEdit = (chambre: ChambreDto) => {
+    setSelectedId(chambre.id ?? null)
+    setForm({
+      numeroChambre: chambre.numeroChambre,
+      type: chambre.type,
+    })
+    handleOpen()
+  }
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" component="h1" fontWeight="bold">
+          Gestion des Chambres
+        </Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+          Ajouter
+        </Button>
+      </Box>
+
+      <TableContainer component={Paper} elevation={0} variant="outlined">
+        <Table>
+          <TableHead sx={{ bgcolor: 'slate.50' }}>
+            <TableRow>
+              <TableCell><strong>ID</strong></TableCell>
+              <TableCell><strong>Numéro</strong></TableCell>
+              <TableCell><strong>Type</strong></TableCell>
+              <TableCell align="right"><strong>Actions</strong></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {chambres.map((chambre) => (
+              <TableRow key={chambre.id ?? chambre.numeroChambre}>
+                <TableCell>{chambre.id}</TableCell>
+                <TableCell>{chambre.numeroChambre}</TableCell>
+                <TableCell>{chambre.type}</TableCell>
+                <TableCell align="right">
+                  <IconButton color="primary" onClick={() => handleEdit(chambre)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton color="error" onClick={() => handleDelete(chambre.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+            {chambres.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                  Aucune chambre trouvée.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{selectedId ? 'Modifier Chambre' : 'Ajouter Chambre'}</DialogTitle>
+        <form onSubmit={handleSubmit}>
+          <DialogContent dividers>
+            <Box sx={{ display: 'grid', gap: 2 }}>
+              <TextField
+                label="Numéro Chambre"
+                type="number"
+                fullWidth
+                required
+                value={form.numeroChambre}
+                onChange={(e) => setForm({ ...form, numeroChambre: Number(e.target.value) })}
+              />
+              <FormControl fullWidth required>
+                <InputLabel>Type Chambre</InputLabel>
+                <Select
+                  label="Type Chambre"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value as TypeChambre })}
+                >
+                  {chambreTypes.map((type) => (
+                    <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={handleClose} color="inherit">Annuler</Button>
+            <Button type="submit" variant="contained">
+              {selectedId ? 'Modifier' : 'Ajouter'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </Box>
+  )
+}
