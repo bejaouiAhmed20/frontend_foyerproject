@@ -61,7 +61,7 @@ export default function EtudiantPage() {
     event.preventDefault()
     try {
       if (selectedId) {
-        await updateEtudiant({ ...form, id: selectedId })
+        await updateEtudiant({ ...form, idEtudiant: selectedId })
       } else {
         await createEtudiant(form)
       }
@@ -83,7 +83,7 @@ export default function EtudiantPage() {
   }
 
   const handleEdit = (etudiant: EtudiantDto) => {
-    setSelectedId(etudiant.id ?? null)
+    setSelectedId(etudiant.idEtudiant ?? null)
     setForm({
       nomEt: etudiant.nomEt,
       prenomEt: etudiant.prenomEt,
@@ -119,8 +119,8 @@ export default function EtudiantPage() {
           </TableHead>
           <TableBody>
             {etudiants.map((etudiant) => (
-              <TableRow key={etudiant.id ?? etudiant.cin}>
-                <TableCell>{etudiant.id}</TableCell>
+              <TableRow key={etudiant.idEtudiant ?? etudiant.cin}>
+                <TableCell>{etudiant.idEtudiant}</TableCell>
                 <TableCell>{etudiant.nomEt} {etudiant.prenomEt}</TableCell>
                 <TableCell>{etudiant.cin}</TableCell>
                 <TableCell>{etudiant.ecole}</TableCell>
@@ -129,7 +129,7 @@ export default function EtudiantPage() {
                   <IconButton color="primary" onClick={() => handleEdit(etudiant)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton color="error" onClick={() => handleDelete(etudiant.id)}>
+                  <IconButton color="error" onClick={() => handleDelete(etudiant.idEtudiant)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>

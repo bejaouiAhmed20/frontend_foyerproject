@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { ReservationDto } from '../types/entities'
-import { createReservation, deleteReservation, getReservations, updateReservation, validateReservation, cancelReservation } from '../services/api'
+import type { ReservationDto, ReservationPayloadDto, ChambreDto, EtudiantDto } from '../types/entities'
+import { createReservation, deleteReservation, getReservations, updateReservation, validateReservation, cancelReservation, getChambres, getEtudiants } from '../services/api'
 import {
   Box,
   Button,
@@ -21,6 +21,10 @@ import {
   Checkbox,
   FormControlLabel,
   Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -28,54 +32,54 @@ import AddIcon from '@mui/icons-material/Add'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 
-const initialReservation: ReservationDto = {
+const initialPayload = {
   idReservation: '',
   anneeUniversitaire: '',
   estValide: false,
-  etudiants: [],
+  chambreId: '' as number | '',
 }
 
 export default function ReservationPage() {
   const [reservations, setReservations] = useState<ReservationDto[]>([])
-  const [form, setForm] = useState<ReservationDto>(initialReservation)
-  const [etudiantsField, setEtudiantsField] = useState<string>('')
+  const [chambres, setChambres] = useState<ChambreDto[]>([])
+  const [etudiants, setEtudiants] = useState<EtudiantDto[]>([])
+  const [form, setForm] = useState(initialPayload)
+  const [selectedEtudiantIds, setSelectedEtudiantIds] = useState<number[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
 
-  const loadReservations = async () => {
+  const loadData = async () => {
     try {
-      const data = await getReservations()
-      setReservations(data)
+      const [resData, chData, etData] = await Promise.all([getReservations(), getChambres(), getEtudiants()])
+      setReservations(resData)
+      setChambres(chData)
+      setEtudiants(etData)
     } catch (error) {
-      console.error('Unable to load reservations')
+      console.error('Unable to load data')
     }
   }
 
   useEffect(() => {
-    loadReservations()
+    loadData()
   }, [])
 
   const handleOpen = () => setOpen(true)
   const handleClose = () => {
     setOpen(false)
-    setForm(initialReservation)
-    setEtudiantsField('')
+    setForm(initialPayload)
+    setSelectedEtudiantIds([])
     setSelectedId(null)
   }
-
-  const parseEtudiants = (value: string) =>
-    value
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((id) => ({ idEtudiant: Number(id) }))
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     try {
-      const payload: ReservationDto = {
-        ...form,
-        etudiants: parseEtudiants(etudiantsField),
+      const payload: ReservationPayloadDto = {
+        idReservation: form.idReservation || `${form.anneeUniversitaire.substring(0, 4)}-${form.chambreId}-${crypto.randomUUID().substring(0, 8)}`,
+        anneeUniversitaire: form.anneeUniversitaire,
+        estValide: form.estValide,
+        chambreId: Number(form.chambreId),
+        etudiantIds: selectedEtudiantIds,
       }
 
       if (selectedId) {
@@ -83,10 +87,11 @@ export default function ReservationPage() {
       } else {
         await createReservation(payload)
       }
-      await loadReservations()
+      await loadData()
       handleClose()
-    } catch (error) {
-      console.error('Save failed')
+    } catch (error: any) {
+      console.error('Save failed', error)
+      alert(error.message || 'Une erreur est survenue lors de la sauvegarde.')
     }
   }
 
@@ -94,9 +99,10 @@ export default function ReservationPage() {
     if (!id) return
     try {
       await deleteReservation(id)
-      await loadReservations()
-    } catch (error) {
-      console.error('Delete failed')
+      await loadData()
+    } catch (error: any) {
+      console.error('Delete failed', error)
+      alert(error.message || 'Une erreur est survenue lors de la suppression.')
     }
   }
 
@@ -104,9 +110,10 @@ export default function ReservationPage() {
     if (!id) return
     try {
       await validateReservation(id)
-      await loadReservations()
-    } catch (error) {
-      console.error('Validation failed')
+      await loadData()
+    } catch (error: any) {
+      console.error('Validation failed', error)
+      alert(error.message || 'Une erreur est survenue lors de la validation.')
     }
   }
 
@@ -114,9 +121,10 @@ export default function ReservationPage() {
     if (!id) return
     try {
       await cancelReservation(id)
-      await loadReservations()
-    } catch (error) {
-      console.error('Cancellation failed')
+      await loadData()
+    } catch (error: any) {
+      console.error('Cancellation failed', error)
+      alert(error.message || "Une erreur est survenue lors de l'annulation.")
     }
   }
 
@@ -126,9 +134,9 @@ export default function ReservationPage() {
       idReservation: reservation.idReservation,
       anneeUniversitaire: reservation.anneeUniversitaire,
       estValide: reservation.estValide,
-      etudiants: reservation.etudiants ?? [],
+      chambreId: '', // Default since nested chambre is not directly available in ReservationDto
     })
-    setEtudiantsField((reservation.etudiants ?? []).map((ref) => ref.idEtudiant).join(', '))
+    setSelectedEtudiantIds((reservation.etudiants ?? []).map((ref) => ref.idEtudiant))
     handleOpen()
   }
 
@@ -204,14 +212,6 @@ export default function ReservationPage() {
           <DialogContent dividers>
             <Box sx={{ display: 'grid', gap: 2 }}>
               <TextField
-                label="ID Réservation"
-                fullWidth
-                required
-                value={form.idReservation}
-                onChange={(e) => setForm({ ...form, idReservation: e.target.value })}
-                disabled={!!selectedId}
-              />
-              <TextField
                 label="Année Universitaire"
                 type="date"
                 fullWidth
@@ -220,6 +220,20 @@ export default function ReservationPage() {
                 value={form.anneeUniversitaire}
                 onChange={(e) => setForm({ ...form, anneeUniversitaire: e.target.value })}
               />
+              <FormControl fullWidth required>
+                <InputLabel>Chambre</InputLabel>
+                <Select
+                  value={form.chambreId}
+                  label="Chambre"
+                  onChange={(e) => setForm({ ...form, chambreId: Number(e.target.value) })}
+                >
+                  {chambres.map((chambre) => (
+                    <MenuItem key={chambre.idChambre} value={chambre.idChambre}>
+                      Chambre {chambre.numeroChambre} ({chambre.type})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -230,14 +244,24 @@ export default function ReservationPage() {
                 }
                 label="Est Valide"
               />
-              <TextField
-                label="IDs Étudiants (séparés par des virgules)"
-                fullWidth
-                placeholder="1, 2, 3"
-                value={etudiantsField}
-                onChange={(e) => setEtudiantsField(e.target.value)}
-                helperText="Saisissez les IDs des étudiants concernés."
-              />
+              <FormControl fullWidth required>
+                <InputLabel>Étudiants</InputLabel>
+                <Select
+                  multiple
+                  value={selectedEtudiantIds}
+                  label="Étudiants"
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setSelectedEtudiantIds(typeof value === 'string' ? value.split(',').map(Number) : value as number[])
+                  }}
+                >
+                  {etudiants.map((etudiant) => (
+                    <MenuItem key={etudiant.idEtudiant} value={etudiant.idEtudiant}>
+                      {etudiant.nomEt} {etudiant.prenomEt} (CIN: {etudiant.cin})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>

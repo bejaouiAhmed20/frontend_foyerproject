@@ -15,7 +15,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({
-  tabs = [], // ✅ default empty array (fix crash)
+  tabs = [], 
   activeTab,
   onSelect,
   userEmail,

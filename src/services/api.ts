@@ -4,6 +4,7 @@ import type {
   EtudiantDto,
   FoyerDto,
   ReservationDto,
+  ReservationPayloadDto,
   UniversiteDto,
 } from '../types/entities'
 
@@ -69,6 +70,8 @@ export const createBloc = (bloc: BlocDto) =>
 export const updateBloc = (bloc: BlocDto) =>
   fetchJson<BlocDto>('/bloc', { method: 'PUT', body: JSON.stringify(bloc) })
 export const deleteBloc = (id: number | string) => wrapDelete(`/bloc/${id}`)
+export const linkBlocFoyer = (blocId: number | string, foyerId: number | string) =>
+  fetchJson<BlocDto>(`/bloc/${blocId}/foyer/${foyerId}`, { method: 'PUT' })
 
 export const getChambres = () => fetchJson<ChambreDto[]>('/chambre')
 export const getChambreById = (id: number | string) => fetchJson<ChambreDto>(`/chambre/${id}`)
@@ -90,11 +93,14 @@ export const getEtudiantReservations = (id: number | string) => fetchJson<Reserv
 
 export const getReservations = () => fetchJson<ReservationDto[]>('/reservation')
 export const getReservationById = (id: number | string) => fetchJson<ReservationDto>(`/reservation/${id}`)
-export const createReservation = (reservation: ReservationDto) =>
+export const createReservation = (reservation: ReservationPayloadDto) =>
   fetchJson<ReservationDto>('/reservation', { method: 'POST', body: JSON.stringify(reservation) })
-export const updateReservation = (reservation: ReservationDto) =>
+export const updateReservation = (reservation: ReservationPayloadDto) =>
   fetchJson<ReservationDto>('/reservation', { method: 'PUT', body: JSON.stringify(reservation) })
 export const deleteReservation = (id: string) => wrapDelete(`/reservation/${id}`)
 export const checkReservationAvailability = (chambreId: number | string) => fetchJson<boolean>(`/reservation/availability/${chambreId}`)
 export const validateReservation = (id: string) => fetchJson<ReservationDto>(`/reservation/${id}/validate`, { method: 'PUT' })
 export const cancelReservation = (id: string) => fetchJson<ReservationDto>(`/reservation/${id}/cancel`, { method: 'PUT' })
+
+export const sendChatMessage = (message: string) =>
+  fetchJson<{ reply: string }>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message }) })

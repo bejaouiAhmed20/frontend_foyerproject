@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { ChambreDto, TypeChambre } from '../types/entities'
-import { createChambre, deleteChambre, getChambres, updateChambre } from '../services/api'
+import type { ChambreDto, TypeChambre, BlocDto } from '../types/entities'
+import { createChambre, deleteChambre, getChambres, updateChambre, getBlocs } from '../services/api'
 import {
   Box,
   Button,
@@ -30,27 +30,34 @@ import AddIcon from '@mui/icons-material/Add'
 const initialChambre: ChambreDto = {
   numeroChambre: 0,
   type: 'SIMPLE',
+  bloc: {
+    nomBloc: '',
+    capaciteBloc: 0,
+    idBloc: 0,
+  },
 }
 
 const chambreTypes: TypeChambre[] = ['SIMPLE', 'DOUBLE', 'TRIPLE']
 
 export default function ChambrePage() {
   const [chambres, setChambres] = useState<ChambreDto[]>([])
+  const [blocs, setBlocs] = useState<BlocDto[]>([])
   const [form, setForm] = useState<ChambreDto>(initialChambre)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [open, setOpen] = useState(false)
 
-  const loadChambres = async () => {
+  const loadData = async () => {
     try {
-      const data = await getChambres()
-      setChambres(data)
+      const [chambresData, blocsData] = await Promise.all([getChambres(), getBlocs()])
+      setChambres(chambresData)
+      setBlocs(blocsData)
     } catch (error) {
-      console.error('Unable to load chambres')
+      console.error('Unable to load data')
     }
   }
 
   useEffect(() => {
-    loadChambres()
+    loadData()
   }, [])
 
   const handleOpen = () => setOpen(true)
@@ -64,11 +71,11 @@ export default function ChambrePage() {
     event.preventDefault()
     try {
       if (selectedId) {
-        await updateChambre({ ...form, id: selectedId })
+        await updateChambre({ ...form, idChambre: selectedId })
       } else {
         await createChambre(form)
       }
-      await loadChambres()
+      await loadData()
       handleClose()
     } catch (error) {
       console.error('Save failed')
@@ -79,17 +86,22 @@ export default function ChambrePage() {
     if (!id) return
     try {
       await deleteChambre(id)
-      await loadChambres()
+      await loadData()
     } catch (error) {
       console.error('Delete failed')
     }
   }
 
   const handleEdit = (chambre: ChambreDto) => {
-    setSelectedId(chambre.id ?? null)
+    setSelectedId(chambre.idChambre ?? null)
     setForm({
       numeroChambre: chambre.numeroChambre,
       type: chambre.type,
+      bloc: chambre.bloc ? {
+        idBloc: chambre.bloc.idBloc,
+        nomBloc: chambre.bloc.nomBloc,
+        capaciteBloc: chambre.bloc.capaciteBloc,
+      } : undefined,
     })
     handleOpen()
   }
@@ -117,15 +129,15 @@ export default function ChambrePage() {
           </TableHead>
           <TableBody>
             {chambres.map((chambre) => (
-              <TableRow key={chambre.id ?? chambre.numeroChambre}>
-                <TableCell>{chambre.id}</TableCell>
+              <TableRow key={chambre.idChambre ?? chambre.numeroChambre}>
+                <TableCell>{chambre.idChambre}</TableCell>
                 <TableCell>{chambre.numeroChambre}</TableCell>
                 <TableCell>{chambre.type}</TableCell>
                 <TableCell align="right">
                   <IconButton color="primary" onClick={() => handleEdit(chambre)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton color="error" onClick={() => handleDelete(chambre.id)}>
+                  <IconButton color="error" onClick={() => handleDelete(chambre.idChambre)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -164,6 +176,25 @@ export default function ChambrePage() {
                 >
                   {chambreTypes.map((type) => (
                     <MenuItem key={type} value={type}>{type}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth required>
+                <InputLabel>Bloc</InputLabel>
+                <Select
+                  value={form.bloc?.idBloc || ''}
+                  label="Bloc"
+                  onChange={(e) => {
+                    const selectedBloc = blocs.find(b => b.idBloc === Number(e.target.value));
+                    if (selectedBloc) {
+                      setForm({ ...form, bloc: selectedBloc });
+                    }
+                  }}
+                >
+                  {blocs.map((bloc) => (
+                    <MenuItem key={bloc.idBloc} value={bloc.idBloc}>
+                      {bloc.nomBloc} (Capacité: {bloc.capaciteBloc})
+                    </MenuItem>
                   ))}
                 </Select>
               </FormControl>

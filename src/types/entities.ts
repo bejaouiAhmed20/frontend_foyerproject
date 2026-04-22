@@ -1,34 +1,36 @@
 export type TypeChambre = 'SIMPLE' | 'DOUBLE' | 'TRIPLE'
 
 export interface ChambreDto {
-  id?: number
+  idChambre?: number
   numeroChambre: number
   type: TypeChambre
+  bloc?: BlocDto
 }
 
 export interface BlocDto {
-  id?: number
+  idBloc?: number
   nomBloc: string
   capaciteBloc: number
-  chambres: ChambreDto[]
+  chambres?: ChambreDto[]
+  foyer?: FoyerDto
 }
 
 export interface FoyerDto {
-  id?: number
+  idFoyer?: number
   nomFoyer: string
   capaciteFoyer: number
-  blocs: BlocDto[]
+  blocs?: BlocDto[]
 }
 
 export interface UniversiteDto {
-  id?: number
+  idUniversite?: number
   nomUniversite: string
   adresse: string
-  foyer: FoyerDto
+  foyer?: FoyerDto
 }
 
 export interface EtudiantDto {
-  id?: number
+  idEtudiant?: number
   nomEt: string
   prenomEt: string
   cin: number
@@ -45,4 +47,12 @@ export interface ReservationDto {
   anneeUniversitaire: string
   estValide: boolean
   etudiants: ReservationEtudiantRef[]
+}
+
+export interface ReservationPayloadDto {
+  idReservation?: string
+  anneeUniversitaire: string
+  estValide: boolean
+  chambreId: number
+  etudiantIds: number[]
 }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { sendChatMessage } from '../services/api'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -9,17 +10,6 @@ interface Message {
 interface ChatbotWindowProps {
   onClose: () => void
 }
-
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY ?? ''
-
-const SYSTEM_PROMPT = `Tu es un assistant virtuel intelligent et empathique pour une plateforme de gestion d'hébergement universitaire. Tu aides les étudiants à :
-- Trouver une chambre adaptée à leurs besoins (Simple, Double, Triple)
-- Comprendre le processus de réservation
-- Naviguer dans les différents blocs et foyers
-- Répondre à leurs questions sur la vie en résidence universitaire
-- Les guider émotionnellement (stress de première année, inquiétudes, etc.)
-
-Réponds toujours en français, de manière chaleureuse, concise et utile. Si un étudiant semble stressé, sois empathique avant d'être informatif. Tu fais partie du système de gestion du Foyer Universitaire.`
 
 export default function ChatbotWindow({ onClose }: ChatbotWindowProps) {
   const [messages, setMessages] = useState<Message[]>([
@@ -52,28 +42,8 @@ export default function ChatbotWindow({ onClose }: ChatbotWindowProps) {
     setLoading(true)
 
     try {
-      const history = [...messages, userMessage].map((m) => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
-      }))
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents: history,
-            generationConfig: { temperature: 0.8, maxOutputTokens: 512 },
-          }),
-        }
-      )
-
-      const data = await response.json()
-      const reply =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text ??
-        "Désolé, je n'ai pas pu obtenir une réponse. Veuillez réessayer."
+      const response = await sendChatMessage(text)
+      const reply = response.reply ?? "Désolé, je n'ai pas pu obtenir une réponse. Veuillez réessayer."
 
       setMessages((prev) => [
         ...prev,
@@ -84,7 +54,7 @@ export default function ChatbotWindow({ onClose }: ChatbotWindowProps) {
         ...prev,
         {
           role: 'assistant',
-          content: "⚠️ Une erreur s'est produite. Vérifiez votre connexion ou la clé API Gemini.",
+          content: "⚠️ Une erreur s'est produite. Impossible de contacter l'assistant.",
           timestamp: new Date(),
         },
       ])
